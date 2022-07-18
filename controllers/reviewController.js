@@ -4,7 +4,8 @@ var axios = require('axios');
 
 
 module.exports = {
-    findCommentByProduct: async (req, res) => {
+    findCommentByProduct: async (req, res, next) => {
+
         const page = req.body.page || 1
 
         const myCustomLabels = {
@@ -24,8 +25,20 @@ module.exports = {
         Review.paginate({ goods_id: req.body.goods_id }, options, function (err, result) {
             res.send(result);
         });
-
-
+    },
+    findCommentByStore: async (req, res) => {
+        req.user._id
+        var config = {
+            method: 'get',
+            url: "http://host.docker.internal:3001/api/store",
+            headers: { 
+                'Authorization': 'Bearer '+ req.token
+            } 
+            
+        };
+        const store = (await axios(config)).data
+        const reviews = await Review.find({ store_id: store._id });
+        res.send(reviews)
     },
     createComment: async (req, res) => {
 
@@ -49,8 +62,8 @@ module.exports = {
                 url: 'http://host.docker.internal:3000/users/get/' + account_id,
             };
             const account = (await axios(config)).data
-            review.order_id= order_id
-            review.goods_id= goods_id
+            review.order_id = order_id
+            review.goods_id = goods_id
             review.star = star
             review.comment = comment
             review.account_id = account_id
@@ -59,8 +72,20 @@ module.exports = {
             await review.save()
 
         }
+        var config = {
+            method: 'post',
+            url: "http://host.docker.internal:3003/orders/update/comment",
+            headers: { 
+                'Authorization': 'Bearer '+ req.token
+            },
+            data:{
+                order_id:order_id,
+                goods_id:goods_id
+            }
+        };
+        const order = (await axios(config)).data
         //const review = new Review({ account_id, order_id, goods_id, star, comment })
-        await review.save()
+        
         res.send(review);
     },
     replyComment: async (req, res) => {
